@@ -1,0 +1,14 @@
+[project]
+name = "factory-dashboard"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "asyncua>=2.1.0",
+    "gradio>=6.31.0",
+    "httpx>=0.28.1",
+    "pandas>=3.1.1",
+    "plotly>=7.1.0",
+    "pymodbus>=3.16.2",
+]

@@ -1,0 +1,175 @@
+# ============================================================
+# 工厂设备实时看板 - 项目配置
+# 采集服务与看板共用本文件(通过 SQLite 文件解耦,两个进程互不影响)
+# ============================================================
+
+[database]
+# SQLite 数据库路径(相对项目根目录)
+path = "data/factory.db"
+
+[collector]
+# 采集间隔(秒)
+interval_seconds = 5
+# 设备超过此时长未上报 → 判定离线(秒)
+stale_threshold_seconds = 90
+# 同一设备同一指标的同级别告警抑制窗口(秒),防止告警刷屏
+alert_suppress_seconds = 300
+# 数据保留天数(采集服务每小时检查一次),<= 0 表示永久保留
+retention_days = 90
+
+[dashboard]
+# 内网看板建议 0.0.0.0,供车间大屏/其他电脑访问
+host = "0.0.0.0"
+port = 7860
+# 实时页自动刷新间隔(秒)
+refresh_seconds = 5
+# 趋势图每条曲线最大点数(超出自动抽样)
+max_plot_points = 2000
+
+# ---------- 班次定义(可自行修改) ----------
+[[shifts]]
+name = "早班"
+start = "08:00"
+end = "16:00"
+
+[[shifts]]
+name = "中班"
+start = "16:00"
+end = "24:00"
+
+[[shifts]]
+name = "夜班"
+start = "00:00"
+end = "08:00"
+
+# ---------- 设备台账(采集服务首次启动时写入数据库) ----------
+[[devices]]
+id = "CNC-01"
+name = "CNC加工中心1号"
+location = "车间A-工位01"
+type = "mock"
+enabled = true
+
+[[devices]]
+id = "CNC-02"
+name = "CNC加工中心2号"
+location = "车间A-工位02"
+type = "mock"
+enabled = true
+
+[[devices]]
+id = "PRESS-01"
+name = "冲压机1号"
+location = "车间B-工位01"
+type = "mock"
+enabled = true
+
+# ---------- 告警规则(device_id 支持 "*" 表示全部设备) ----------
+[[rules]]
+device_id = "*"
+metric = "temperature"
+op = ">"
+threshold = 85
+level = "WARN"
+message = "温度偏高,请检查冷却系统"
+
+[[rules]]
+device_id = "*"
+metric = "temperature"
+op = ">"
+threshold = 95
+level = "CRIT"
+message = "温度严重超标,建议立即停机检查"
+
+[[rules]]
+device_id = "*"
+metric = "vibration"
+op = ">"
+threshold = 7
+level = "WARN"
+message = "振动异常增大,请检查轴承/固定"
+
+[[rules]]
+device_id = "*"
+metric = "spindle_speed"
+op = "<"
+threshold = 5000
+level = "INFO"
+message = "主轴转速过低"
+
+# ============================================================
+# 真实设备接入示例(取消注释并改为现场参数即可启用;
+# 协议支持:modbus / opcua / http,字段说明见 README「设备协议适配器」)
+# ============================================================
+
+# ---------- 示例 1:Modbus TCP(PLC / 变频器 / 仪表) ----------
+# [[devices]]
+# id = "PLC-01"
+# name = "1号PLC产线"
+# location = "车间A-产线01"
+# type = "modbus"
+# enabled = true
+#
+# [devices.options]
+# host = "192.168.1.10"
+# port = 502
+# unit_id = 1
+# timeout = 3
+#
+# [devices.options.points.temperature]
+# register = 100          # PDU 起始地址(0 基)
+# type = "holding"        # holding / input / coil / discrete
+# data_type = "int16"     # uint16 / int16 / uint32 / int32 / float32 / float64 / bool
+# scale = 0.1             # 最终值 = 原始值 * scale + offset
+#
+# [devices.options.points.vibration]
+# register = 102
+# data_type = "uint16"
+# scale = 0.1
+#
+# [devices.options.points.spindle_speed]
+# register = 110
+# data_type = "uint32"
+
+# ---------- 示例 2:OPC UA ----------
+# [[devices]]
+# id = "MACHINE-01"
+# name = "加工中心(OPC UA)"
+# location = "车间A-工位03"
+# type = "opcua"
+# enabled = true
+#
+# [devices.options]
+# url = "opc.tcp://192.168.1.20:4840"
+# timeout = 5
+# # username = "operator"
+# # password = "******"
+#
+# [devices.options.points.temperature]
+# node = "ns=2;s=Line1.Temperature"
+#
+# [devices.options.points.spindle_speed]
+# node = "ns=2;s=Line1.SpindleSpeed"
+
+# ---------- 示例 3:HTTP / JSON 设备网关 ----------
+# [[devices]]
+# id = "GATEWAY-01"
+# name = "能管网关"
+# location = "配电房"
+# type = "http"
+# enabled = true
+#
+# [devices.options]
+# base_url = "http://192.168.1.30:8080/api"
+# mode = "json_object"    # json_object:一次请求取全部点位;per_point:每个点位单独请求
+# url = "/status"
+# timeout = 3
+# # headers = { Authorization = "Bearer your-token" }
+#
+# [devices.options.points.temperature]
+# field = "temperature"           # JSON 字段路径,支持 a.b.c / 数组下标 a.0.b
+#
+# [devices.options.points.spindle_speed]
+# field = "data.speed"
+# # per_point 模式下可单独指定点位接口:
+# # url = "/speed"
